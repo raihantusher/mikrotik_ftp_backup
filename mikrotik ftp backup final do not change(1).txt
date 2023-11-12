@@ -1,0 +1,65 @@
+/system scheduler
+add interval=1d name=Backup_Daily on-event="/system script run Backup_Daily" \ policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \ start-date=oct/12/2023 start-time=13:10:00
+
+
+
+
+
+/system script
+add dont-require-permissions=no name=Backup_Daily owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ## Set local variables. Change the value between \"\" to reflect your envi\
+    ronment. Do not delete quotation marks. \r\
+	\n:local ftpserver \"192.168.1.150\"\r\
+    \n:local username \"egnet\"\r\
+    \n:local password \"Egit!@#2023\"\r\
+    \n\r\
+    \n### Set Local Filename and Remote Filename variables. Do not change this\
+    \_unless you want to edit the format of the filename.\r\
+    \n### Default \"local file name\" is always the same to avoid lots of file\
+    s and running out of space\r\
+    \n:local hostname [/system identity get name]\r\
+    \n:local date ([:pick [/system clock get date] 7 11] \\\r\
+    \n. [:pick [/system clock get date] 0 3] \\\r\
+    \n. [:pick [/system clock get date] 4 6]);\r\
+    \n:local localfilename \"\$hostname-Backup-Daily\";\r\
+    \n:local remotefilename \"\$hostname-\$date\";\r\
+    \n\r\
+    \n### Enable for Debug removing staing hash in the following lines\r\
+    \n:log info \"\$localfilename\";\r\
+    \n:log info \"\$remotefilename\";\r\
+    \n:log info \"\$hostname\";\r\
+    \n:log info \"\$date\";\r\
+    \n\r\
+    \n### Stating the Backup\r\
+    \n:log info \"STARTING BACKUP\";\r\
+    \n\r\
+    \n# Create backup file and export the config.\r\
+    \nexport compact file=\"\$localfilename\"\r\
+    \n/system backup save name=\"\$localfilename\"\r\
+    \n:log info \"Backup Created Successfully\"\r\
+    \n\r\
+    \n# Upload config file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$localfilename.backup\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"\$remotefilename.backup\" upload=yes\r\
+    \n:log info \"Config Uploaded Successfully\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$localfilename.rsc\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"\$remotefilename.rsc\" upload=yes\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n### Wait 2 second before doing anything\r\
+    \ndelay 2;\r\
+    \n\r\
+    \n### Remove starting hash in the following lines to delete created backup\
+    \_files once they have been uploaded\r\
+    \n#/file remove \"\$localfilename.backup\"\r\
+    \n#/file remove \"\$localfilename.rsc\"\r\
+    \n#:log info \"Local Backup Files Deleted Successfully\"\r\
+    \n\r\
+    \n### Finishing the Backup\r\
+    \n:log info \"BACKUP FINISHED\";\r\
+    \n"
